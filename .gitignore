@@ -1,0 +1,14 @@
+#Folders
+.gradle
+.idea
+build
+local.properties
+
+#Exceptions
+!.idea/codeStyles/**
+!.idea/dictionaries/
+!.idea/inspectionProfiles/
+!build/libs/
+!build/libs/*
+!build/libs/extra
+!build/libs/extra/*
