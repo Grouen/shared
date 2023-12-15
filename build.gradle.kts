@@ -57,7 +57,10 @@ kotlin {
         }
         val jvmMain by getting {
             dependencies {
-                api("com.squareup.okhttp3:okhttp:4.12.0")
+                api(fileTree("libs") {
+                    include("*.jar")
+                })
+                api("com.squareup.okio:okio:3.6.0")
                 api("com.github.ajalt.mordant:mordant:2.2.0")
             }
         }

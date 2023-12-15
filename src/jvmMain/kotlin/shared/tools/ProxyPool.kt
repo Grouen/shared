@@ -1,8 +1,10 @@
 package shared.tools
 
+import okio.withLock
 import shared.model.SOCKSProxyInfo
 import java.io.IOException
 import java.net.*
+import java.util.concurrent.locks.ReentrantLock
 
 class ProxyPool(
     private val proxyList: List<SOCKSProxyInfo>,
@@ -10,6 +12,7 @@ class ProxyPool(
 ) : ProxySelector() {
     private val bannedProxyPerKey = mutableMapOf<String, MutableSet<Proxy>>()
     private val proxies = proxyList.map { it.toProxy() }
+    private val lock = ReentrantLock()
 
     init {
         Authenticator.setDefault(object : Authenticator() {
@@ -31,8 +34,7 @@ class ProxyPool(
             }
         }
 
-    @Synchronized
-    fun nextProxy(key: String, previousProxy: Proxy? = null): Proxy? {
+    fun nextProxy(key: String, previousProxy: Proxy? = null): Proxy? = lock.withLock {
         if (proxyList.isEmpty()) return null
 
         val bannedProxyForKey = bannedProxyPerKey.getOrDefault(key, mutableSetOf())
@@ -54,8 +56,7 @@ class ProxyPool(
         return null
     }
 
-    @Synchronized
-    fun getProxy(): Proxy {
+    fun getProxy(): Proxy = lock.withLock {
         return if (mode == Mode.MANUAL) proxies[index] else next()
     }
 

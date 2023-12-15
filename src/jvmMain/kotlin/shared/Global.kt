@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
 import okhttp3.*
-import okhttp3.internal.concurrent.TaskRunner
 import shared.extension.timeout
 import shared.tools.SameThreadExecutorService
 import java.io.File
@@ -21,7 +20,6 @@ import java.nio.file.Files
 import java.security.SecureRandom
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
-import java.util.concurrent.ThreadFactory
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.net.ssl.SSLContext
@@ -36,18 +34,6 @@ val TERMINAL by lazy {
                 terminal.cursor.show()
             })
         }
-    }
-}
-
-private var updateOkHttpTaskRunnerThreadPoolBackend = TaskRunner.INSTANCE::class.java.getDeclaredField("backend").apply {
-    isAccessible = true
-
-    val feature = Runtime.version().feature()
-    if (feature >= 19) {
-        val builder = Thread::class.java.getMethod("ofVirtual").invoke(null)
-        val namedBuilder = builder.javaClass.interfaces.first().methods.first { it.name == "name" && it.parameterCount == 2 }.invoke(builder, "OkHttp VirtualTaskRunner-", 0)
-        val threadFactory = namedBuilder.javaClass.interfaces.first().methods.first { it.name == "factory" }.invoke(namedBuilder) as ThreadFactory
-        set(TaskRunner.INSTANCE, TaskRunner.RealBackend(threadFactory))
     }
 }
 
