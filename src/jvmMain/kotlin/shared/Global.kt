@@ -12,10 +12,10 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
 import okhttp3.*
 import shared.extension.timeout
+import shared.tools.ProxyPool
 import shared.tools.SameThreadExecutorService
 import java.io.File
 import java.io.FileOutputStream
-import java.net.ProxySelector
 import java.nio.file.Files
 import java.security.SecureRandom
 import java.security.cert.CertificateException
@@ -57,7 +57,7 @@ fun createZip(folder: File): File? {
     return zipFile
 }
 
-fun createHttpClient(proxySelector: ProxySelector? = null, isUnsafe: Boolean = false, builder: (OkHttpClient.Builder.() -> Unit)? = null) = OkHttpClient()
+fun createHttpClient(proxyPool: ProxyPool? = null, isUnsafe: Boolean = false, builder: (OkHttpClient.Builder.() -> Unit)? = null) = OkHttpClient()
     .newBuilder()
     .apply {
         dispatcher(Dispatcher(SameThreadExecutorService()).apply {
@@ -68,8 +68,9 @@ fun createHttpClient(proxySelector: ProxySelector? = null, isUnsafe: Boolean = f
 
         builder?.invoke(this)
 
-        if (proxySelector != null) {
-            proxySelector(proxySelector)
+        if (proxyPool != null) {
+            proxySelector(proxyPool)
+            proxyAuthenticator(proxyPool)
         }
 
         if (isUnsafe) {

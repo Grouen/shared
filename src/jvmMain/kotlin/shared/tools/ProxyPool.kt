@@ -1,33 +1,45 @@
 package shared.tools
 
+import okhttp3.*
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okio.withLock
-import shared.model.SOCKSProxyInfo
+import shared.model.ProxyInfo
 import java.io.IOException
 import java.net.*
 import java.util.concurrent.locks.ReentrantLock
 
 class ProxyPool(
-    private val proxyList: List<SOCKSProxyInfo>,
-    private val mode: Mode = Mode.AUTO,
-) : ProxySelector() {
+    proxyList: List<ProxyInfo>,
+    private var mode: Mode = Mode.AUTO,
+) : ProxySelector(), okhttp3.Authenticator {
+    companion object {
+        private val PING_REQUEST = Request.Builder().url("https://google.com".toHttpUrl()).build()
+        private val NO_PROXY = listOf(Proxy.NO_PROXY)
+    }
+
+    var proxyList = proxyList
+        set(value) {
+            lock.withLock {
+                field = value
+                update()
+            }
+        }
+
     private val bannedProxyPerKey = mutableMapOf<String, MutableSet<Proxy>>()
-    private val proxies = proxyList.map { it.toProxy() }
     private val lock = ReentrantLock()
 
     init {
-        Authenticator.setDefault(object : Authenticator() {
-            override fun getPasswordAuthentication(): PasswordAuthentication {
-                val proxy = proxyList.first { it.address == requestingHost }
-
-                return PasswordAuthentication(proxy.userName, proxy.password!!.toCharArray())
-            }
-        })
+        update()
     }
 
-    @Volatile
+    private lateinit var proxies: List<Proxy>
+
+    private lateinit var proxiesMapForAuth: MutableMap<String, ProxyInfo>
+
     private var index = 0
+        get() = field.coerceAtMost(proxies.lastIndex)
         set(value) {
-            field = if (value > proxyList.lastIndex) {
+            field = if (value > proxies.lastIndex) {
                 0
             } else {
                 value
@@ -56,17 +68,84 @@ class ProxyPool(
         return null
     }
 
-    fun getProxy(): Proxy = lock.withLock {
-        return if (mode == Mode.MANUAL) proxies[index] else next()
+    fun getProxy(): Proxy? = lock.withLock {
+        return proxies.getOrNull(when (mode) {
+            Mode.AUTO -> index++
+            Mode.MANUAL -> index
+        })
     }
 
-    fun next(): Proxy {
-        return proxies[++index]
+    fun next(): Proxy? = lock.withLock {
+        return proxies.getOrNull(++index)
     }
 
-    override fun select(uri: URI?): List<Proxy> = listOf(getProxy())
+    fun validate(httpClient: OkHttpClient): List<ProxyInfo> {
+        val invalidProxies: MutableList<ProxyInfo> = mutableListOf()
+
+        for (proxy in proxyList) {
+            val isValid = runCatching {
+                httpClient
+                    .newBuilder()
+                    .proxyAuthenticator(this)
+                    .proxy(proxy.toProxy())
+                    .build()
+                    .newCall(PING_REQUEST)
+                    .execute().use { it.isSuccessful }
+            }.getOrDefault(false)
+
+            if (isValid.not()) invalidProxies.add(proxy)
+        }
+
+        proxyList = proxyList.toMutableList().apply {
+            removeAll(invalidProxies)
+        }
+
+        return invalidProxies
+    }
+
+    override fun select(uri: URI?): List<Proxy> {
+        val nextProxy = getProxy() ?: return NO_PROXY
+
+        return proxies.toMutableList().apply {
+            remove(nextProxy)
+            add(0, nextProxy)
+        }
+    }
 
     override fun connectFailed(uri: URI?, sa: SocketAddress?, ioe: IOException?) {
+        val proxy = proxiesMapForAuth[(sa as InetSocketAddress).hostName] ?: return
+        proxyList = proxyList.toMutableList().apply {
+            remove(proxy)
+        }
+    }
+
+    override fun authenticate(route: Route?, response: Response): Request? {
+        val challenges = response.challenges()
+        val request = response.request
+        val proxy = route?.proxy ?: return null
+
+        for (challenge in challenges) {
+            if (!"Basic".equals(challenge.scheme, ignoreCase = true)) {
+                continue
+            }
+
+            val proxyAddress = proxy.address() as InetSocketAddress
+
+            val auth = proxiesMapForAuth[proxyAddress.hostName] ?: return null
+
+            val credential = Credentials.basic(auth.userName!!, auth.password!!, challenge.charset)
+            return request.newBuilder()
+                .header("Proxy-Authorization", credential)
+                .build()
+        }
+
+        return null // No challenges were satisfied!
+    }
+
+    private fun update() {
+        bannedProxyPerKey.clear()
+        proxies = proxyList.map { it.toProxy() }
+        proxiesMapForAuth = proxyList.associateBy { it.address }.toMutableMap()
     }
 
     enum class Mode {

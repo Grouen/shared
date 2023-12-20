@@ -3,22 +3,22 @@ package shared.model
 import java.net.InetSocketAddress
 import java.net.Proxy
 
-data class SOCKSProxyInfo(
-    val version: Version,
+data class ProxyInfo(
+    val type: Type,
     val address: String,
     val port: Int,
     val userName: String? = null,
-    val password: String? = null
+    val password: String? = null,
 ) {
     companion object {
         /**
          * Parse this type of string: socks5://exmpl:test@94.198.40.26:8128
          */
-        fun parse(text: String): SOCKSProxyInfo? = runCatching {
-            val version = if (text.startsWith("socks5")) {
-                Version.V5
-            } else if (text.startsWith("socks4")) {
-                Version.V4
+        fun parse(text: String): ProxyInfo? = runCatching {
+            val type = if (text.startsWith("socks")) {
+                Type.SOCKS
+            } else if (text.startsWith("http")) {
+                Type.HTTP
             } else {
                 return@runCatching null
             }
@@ -49,14 +49,14 @@ data class SOCKSProxyInfo(
             }
 
 
-            SOCKSProxyInfo(version = version, address = address, port = port, userName = userName, password = password)
+            ProxyInfo(type = type, address = address, port = port, userName = userName, password = password)
         }.getOrNull()
     }
 
     private val string = buildString {
-        append(when (version) {
-            Version.V4 -> "socks4://"
-            Version.V5 -> "socks5://"
+        append(when (type) {
+            Type.SOCKS -> "socks://"
+            Type.HTTP -> "http://"
         })
 
         if (userName != null) {
@@ -73,11 +73,14 @@ data class SOCKSProxyInfo(
         append("$address:$port")
     }
 
-    fun toProxy(): Proxy = Proxy(Proxy.Type.SOCKS, InetSocketAddress(address, port))
+    fun toProxy(): Proxy = Proxy(when (type) {
+        Type.SOCKS -> Proxy.Type.SOCKS
+        Type.HTTP -> Proxy.Type.HTTP
+    }, InetSocketAddress(address, port))
 
     override fun toString(): String = string
 
-    enum class Version {
-        V4, V5
+    enum class Type {
+        SOCKS, HTTP
     }
 }
