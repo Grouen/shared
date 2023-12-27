@@ -55,7 +55,7 @@ data class ProxyInfo(
 
     private val string = buildString {
         append(when (type) {
-            Type.SOCKS -> "socks://"
+            Type.SOCKS -> "socks5://"
             Type.HTTP -> "http://"
         })
 

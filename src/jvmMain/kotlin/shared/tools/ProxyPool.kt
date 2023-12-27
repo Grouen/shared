@@ -1,6 +1,7 @@
 package shared.tools
 
 import okhttp3.*
+import okhttp3.Authenticator
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okio.withLock
 import org.slf4j.LoggerFactory
@@ -14,7 +15,7 @@ import java.util.concurrent.locks.ReentrantLock
 class ProxyPool(
     proxyList: List<ProxyInfo>,
     private var mode: Mode = Mode.AUTO,
-) : ProxySelector(), okhttp3.Authenticator {
+) : ProxySelector(), Authenticator {
     companion object {
         private val PING_REQUEST = Request.Builder().url("https://api.ipify.org".toHttpUrl()).build()
         private val NO_PROXY = listOf(Proxy.NO_PROXY)
@@ -33,6 +34,12 @@ class ProxyPool(
     private val lock = ReentrantLock()
 
     init {
+        java.net.Authenticator.setDefault(object : java.net.Authenticator() {
+            override fun getPasswordAuthentication(): PasswordAuthentication? {
+                val proxyInfo = proxiesMapForAuth[requestingHost] ?: return null
+                return PasswordAuthentication(proxyInfo.userName, proxyInfo.password?.toCharArray() ?: return null)
+            }
+        })
         update()
     }
 
