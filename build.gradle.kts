@@ -52,7 +52,7 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-                api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.1")
+                api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
             }
         }
         val jvmMain by getting {
@@ -60,7 +60,7 @@ kotlin {
                 api(fileTree("libs") {
                     include("*.jar")
                 })
-                api("com.squareup.okio:okio:3.6.0")
+                api("com.squareup.okio:okio:3.7.0")
                 api("com.github.ajalt.mordant:mordant:2.2.0")
             }
         }
