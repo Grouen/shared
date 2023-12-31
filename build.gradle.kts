@@ -62,6 +62,7 @@ kotlin {
                 })
                 api("com.squareup.okio:okio:3.7.0")
                 api("com.github.ajalt.mordant:mordant:2.2.0")
+                api("net.openhft:zero-allocation-hashing:0.16")
             }
         }
         val jsMain by getting

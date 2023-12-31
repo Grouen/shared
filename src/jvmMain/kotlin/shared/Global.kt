@@ -10,6 +10,7 @@ import com.github.ajalt.mordant.terminal.Terminal
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
+import net.openhft.hashing.LongHashFunction
 import okhttp3.*
 import shared.extension.timeout
 import shared.tools.ProxyPool
@@ -26,6 +27,8 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.X509TrustManager
 import kotlin.time.Duration.Companion.minutes
+
+typealias Hash = LongHashFunction
 
 val TERMINAL by lazy {
     Terminal().also { terminal ->

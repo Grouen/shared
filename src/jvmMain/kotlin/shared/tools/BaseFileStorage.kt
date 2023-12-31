@@ -1,16 +1,16 @@
 package shared.tools
 
-import shared.interfaces.Storage
 import shared.extension.takeIfExists
+import shared.interfaces.Storage
 import java.io.File
 import java.io.InputStream
 
 abstract class BaseFileStorage(
-    name: String
+    name: String,
 ) : Storage<File> {
     protected open val dir = File("storage", name).also { it.mkdirs() }
 
-    fun File(name: String) = File(dir, name)
+    protected open fun File(name: String) = File(dir, name)
     fun File.copy(from: InputStream) {
         from.use { input ->
             outputStream().use {
