@@ -6,6 +6,7 @@ import java.io.IOException
 import java.nio.charset.Charset
 import kotlin.math.min
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.INFINITE
 import kotlin.time.Duration.Companion.seconds
 
 @Suppress("NOTHING_TO_INLINE")
@@ -26,13 +27,10 @@ class ProcessCommunication(processBuilder: ProcessBuilder) : AutoCloseable {
 
     private var array = ByteArray(READ_ARRAY_SIZE)
 
-    inline fun readUntilEOF(timeout: Duration = 30.seconds): String {
-        return buildString {
-            readUntil(timeout) {
-                append(it)
-                true
-            }
-        }
+    fun readUntilExit(): Int {
+        readUntil(INFINITE) { true }
+
+        return process.waitFor()
     }
 
     inline fun readUntilContains(text: String): String? {
