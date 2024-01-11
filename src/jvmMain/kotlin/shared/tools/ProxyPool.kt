@@ -3,6 +3,7 @@ package shared.tools
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okio.withLock
+import org.slf4j.LoggerFactory
 import shared.model.ProxyInfo
 import java.io.IOException
 import java.net.*
@@ -15,6 +16,7 @@ class ProxyPool(
     companion object {
         private val PING_REQUEST = Request.Builder().url("https://google.com".toHttpUrl()).build()
         private val NO_PROXY = listOf(Proxy.NO_PROXY)
+        private val logger = LoggerFactory.getLogger("ProxyPool")
     }
 
     var proxyList = proxyList
@@ -93,7 +95,10 @@ class ProxyPool(
                     .execute().use { it.isSuccessful }
             }.getOrDefault(false)
 
-            if (isValid.not()) invalidProxies.add(proxy)
+            if (isValid.not()) {
+                invalidProxies.add(proxy)
+                logger.info("Invalid proxy: {}", proxy)
+            }
         }
 
         proxyList = proxyList.toMutableList().apply {
