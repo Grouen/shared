@@ -28,9 +28,9 @@ class ProcessCommunication(processBuilder: ProcessBuilder) : AutoCloseable {
     private var array = ByteArray(READ_ARRAY_SIZE)
 
     fun readUntilExit(): Int {
-        readUntil(INFINITE) { true }
+        readUntil(INFINITE) { false }
 
-        return process.waitFor()
+        return process.exitValue()
     }
 
     inline fun readUntilContains(text: String): String? {
