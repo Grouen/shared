@@ -18,6 +18,8 @@ class ProcessCommunication(processBuilder: ProcessBuilder) : AutoCloseable {
 
     val record: String
         get() = recordBuilder.toString()
+    val pid
+        get() = process.pid()
 
     private val recordBuilder = StringBuilder()
 
@@ -33,9 +35,9 @@ class ProcessCommunication(processBuilder: ProcessBuilder) : AutoCloseable {
         return process.exitValue()
     }
 
-    inline fun readUntilContains(text: String): String? {
+    inline fun readUntilContains(text: String, timeout: Duration = 30.seconds): String? {
         var contains = false
-        val string = readUntil { string ->
+        val string = readUntil(timeout) { string ->
             string.contains(text).also {
                 contains = it
             }
