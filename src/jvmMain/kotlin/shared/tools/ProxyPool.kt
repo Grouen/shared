@@ -7,6 +7,9 @@ import org.slf4j.LoggerFactory
 import shared.model.ProxyInfo
 import java.io.IOException
 import java.net.*
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 
 class ProxyPool(
@@ -83,23 +86,32 @@ class ProxyPool(
 
     fun validate(httpClient: OkHttpClient): List<ProxyInfo> {
         val invalidProxies: MutableList<ProxyInfo> = mutableListOf()
+        val executors = Executors.newVirtualThreadPerTaskExecutor()
+        val lock = ReentrantLock()
 
         for (proxy in proxyList) {
-            val isValid = runCatching {
-                httpClient
-                    .newBuilder()
-                    .proxyAuthenticator(this)
-                    .proxy(proxy.toProxy())
-                    .build()
-                    .newCall(PING_REQUEST)
-                    .execute().use { it.isSuccessful }
-            }.getOrDefault(false)
+            executors.execute {
+                val isValid = runCatching {
+                    httpClient
+                        .newBuilder()
+                        .proxyAuthenticator(this)
+                        .proxy(proxy.toProxy())
+                        .build()
+                        .newCall(PING_REQUEST)
+                        .execute().use { it.isSuccessful }
+                }.getOrDefault(false)
 
-            if (isValid.not()) {
-                invalidProxies.add(proxy)
-                logger.info("Invalid proxy: {}", proxy)
+                if (isValid.not()) {
+                    lock.withLock {
+                        invalidProxies.add(proxy)
+                        logger.info("Invalid proxy: {}", proxy)
+                    }
+                }
             }
         }
+
+        executors.shutdown()
+        executors.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS)
 
         proxyList = proxyList.toMutableList().apply {
             removeAll(invalidProxies)
