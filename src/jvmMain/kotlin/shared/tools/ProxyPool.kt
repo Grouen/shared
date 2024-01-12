@@ -16,7 +16,7 @@ class ProxyPool(
     private var mode: Mode = Mode.AUTO,
 ) : ProxySelector(), okhttp3.Authenticator {
     companion object {
-        private val PING_REQUEST = Request.Builder().url("https://google.com".toHttpUrl()).build()
+        private val PING_REQUEST = Request.Builder().url("https://api.ipify.org".toHttpUrl()).build()
         private val NO_PROXY = listOf(Proxy.NO_PROXY)
         private val logger = LoggerFactory.getLogger("ProxyPool")
     }
