@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory
 import shared.model.ProxyInfo
 import java.io.IOException
 import java.net.*
-import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
@@ -130,10 +129,7 @@ class ProxyPool(
     }
 
     override fun connectFailed(uri: URI?, sa: SocketAddress?, ioe: IOException?) {
-        val proxy = proxiesMapForAuth[(sa as InetSocketAddress).hostName] ?: return
-        proxyList = proxyList.toMutableList().apply {
-            remove(proxy)
-        }
+
     }
 
     override fun authenticate(route: Route?, response: Response): Request? {
