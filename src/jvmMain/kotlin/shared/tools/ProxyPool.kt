@@ -79,6 +79,13 @@ class ProxyPool(
         })
     }
 
+    fun getProxyInfo(): ProxyInfo? = lock.withLock {
+        return proxyList.getOrNull(when (mode) {
+            Mode.AUTO -> index++
+            Mode.MANUAL -> index
+        })
+    }
+
     fun next(): Proxy? = lock.withLock {
         return proxies.getOrNull(++index)
     }
@@ -90,15 +97,7 @@ class ProxyPool(
 
         for (proxy in proxyList) {
             executors.execute {
-                val isValid = runCatching {
-                    httpClient
-                        .newBuilder()
-                        .proxyAuthenticator(this)
-                        .proxy(proxy.toProxy())
-                        .build()
-                        .newCall(PING_REQUEST)
-                        .execute().use { it.isSuccessful }
-                }.getOrDefault(false)
+                val isValid = validate(httpClient, proxy.toProxy())
 
                 if (isValid.not()) {
                     lock.withLock {
@@ -117,6 +116,18 @@ class ProxyPool(
         }
 
         return invalidProxies
+    }
+
+    fun validate(httpClient: OkHttpClient, proxy: Proxy): Boolean {
+        return runCatching {
+            httpClient
+                .newBuilder()
+                .proxyAuthenticator(this)
+                .proxy(proxy)
+                .build()
+                .newCall(PING_REQUEST)
+                .execute().use { it.isSuccessful }
+        }.getOrDefault(false)
     }
 
     override fun select(uri: URI?): List<Proxy> {
