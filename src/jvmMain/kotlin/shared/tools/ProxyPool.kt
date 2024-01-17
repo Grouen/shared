@@ -41,7 +41,6 @@ class ProxyPool(
     private lateinit var proxiesMapForAuth: MutableMap<String, ProxyInfo>
 
     private var index = 0
-        get() = field.coerceAtMost(proxies.lastIndex)
         set(value) {
             field = if (value > proxies.lastIndex) {
                 0
@@ -157,7 +156,7 @@ class ProxyPool(
 
             val auth = proxiesMapForAuth[proxyAddress.hostName] ?: return null
 
-            val credential = Credentials.basic(auth.userName!!, auth.password!!, challenge.charset)
+            val credential = runCatching { Credentials.basic(auth.userName!!, auth.password!!, challenge.charset) }.getOrNull()?: return null
             return request.newBuilder()
                 .header("Proxy-Authorization", credential)
                 .build()
@@ -170,6 +169,7 @@ class ProxyPool(
         bannedProxyPerKey.clear()
         proxies = proxyList.map { it.toProxy() }
         proxiesMapForAuth = proxyList.associateBy { it.address }.toMutableMap()
+        index = 0
     }
 
     enum class Mode {
