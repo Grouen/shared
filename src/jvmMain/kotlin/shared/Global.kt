@@ -17,12 +17,15 @@ import shared.tools.ProxyPool
 import shared.tools.SameThreadExecutorService
 import java.io.File
 import java.io.FileOutputStream
+import java.net.URL
 import java.nio.file.Files
 import java.security.SecureRandom
+import java.security.cert.Certificate
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.X509TrustManager
@@ -134,3 +137,54 @@ inline fun println(
     width: Int? = null,
     stderr: Boolean = false,
 ) = TERMINAL.println(message, whitespace, align, overflowWrap, width, stderr)
+
+fun getDomain(ip: String): String? = runCatching {
+    if (ip.endsWith(":80")) return@runCatching null
+
+    @Suppress("DEPRECATION")
+    val destinationURL = URL("https://$ip")
+    val conn = destinationURL.openConnection() as HttpsURLConnection
+    conn.connect()
+
+    try {
+        val certs: Array<Certificate> = conn.serverCertificates
+        val cert = certs.firstOrNull() as? X509Certificate ?: return null
+        val cnInfo = cert.subjectX500Principal.name
+            .split(",")
+            .firstOrNull { it.startsWith("CN=") }
+            ?.substring(3)
+            ?.split(".")
+            ?.takeIf { it.size >= 2 }
+            ?.takeLast(2)
+            ?.joinToString(".") ?: return null
+
+        return cnInfo
+    } finally {
+        conn.disconnect()
+    }
+}.getOrNull()
+
+fun trustAllCerts() {
+    val trustAllCerts: Array<X509TrustManager> = arrayOf(
+        object : X509TrustManager {
+            @Throws(CertificateException::class)
+            override fun checkClientTrusted(chain: Array<X509Certificate?>?, authType: String?) {
+                //nothing to do
+            }
+
+            @Throws(CertificateException::class)
+            override fun checkServerTrusted(chain: Array<X509Certificate?>?, authType: String?) {
+                //nothing to do
+            }
+
+            override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+        }
+    )
+
+    val sslContext: SSLContext = SSLContext.getInstance("SSL")
+    sslContext.init(null, trustAllCerts, SecureRandom())
+    val sslSocketFactory: SSLSocketFactory = sslContext.socketFactory
+
+    HttpsURLConnection.setDefaultSSLSocketFactory(sslSocketFactory);
+    HttpsURLConnection.setDefaultHostnameVerifier { hostname, session -> true };
+}
