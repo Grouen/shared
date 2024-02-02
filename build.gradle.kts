@@ -61,7 +61,7 @@ kotlin {
                     include("*.jar")
                 })
                 api("com.squareup.okio:okio:3.7.0")
-                api("com.github.ajalt.mordant:mordant:2.2.0")
+                api("com.github.ajalt.mordant:mordant:2.3.0")
                 api("net.openhft:zero-allocation-hashing:0.16")
                 api("org.slf4j:slf4j-api:2.0.11")
             }
