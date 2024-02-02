@@ -25,3 +25,9 @@ fun <T> MutableCollection<T>.removeFirstBy(predicate: (T) -> Boolean): T? {
     }
     return null
 }
+
+inline fun <T> Collection<T>.forEachIndexedWithFirstLastMarker(action: (index: Int, T, isFirst: Boolean, isLast: Boolean) -> Unit) {
+    forEachIndexed { index, t ->
+        action.invoke(index, t, index == 0, (size - 1 == index))
+    }
+}
