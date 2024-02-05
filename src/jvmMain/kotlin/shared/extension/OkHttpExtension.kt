@@ -11,6 +11,11 @@ fun Response.cookies(): List<Cookie> {
     }
 }
 
+fun Request.Builder.setCookies(cookies: List<Cookie>): Request.Builder {
+    val cookieHeader = cookies.joinToString("; ") { "${it.name}=${it.value}" }
+    return header("Cookie", cookieHeader)
+}
+
 fun FormBody.Builder.addAll(parameters: Map<String, String>): FormBody.Builder {
     parameters.forEach { (name, value) ->
         add(name, value)
