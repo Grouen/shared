@@ -10,7 +10,7 @@ import kotlin.time.Duration.Companion.INFINITE
 import kotlin.time.Duration.Companion.seconds
 
 @Suppress("NOTHING_TO_INLINE")
-class ProcessCommunication(processBuilder: ProcessBuilder) : AutoCloseable {
+class ProcessCommunication(processBuilder: ProcessBuilder, includeErrorStream: Boolean = true) : AutoCloseable {
     companion object {
         private const val READ_ARRAY_SIZE = 1024
         private val charset = Charset.forName(System.getProperty("native.encoding"))
@@ -18,12 +18,17 @@ class ProcessCommunication(processBuilder: ProcessBuilder) : AutoCloseable {
 
     val record: String
         get() = recordBuilder.toString()
-    val pid
-        get() = process.pid()
+
+    val process: Process = processBuilder.apply {
+        if (includeErrorStream) {
+            redirectErrorStream(true)
+        } else {
+            redirectError(ProcessBuilder.Redirect.DISCARD)
+        }
+    }.start()
 
     private val recordBuilder = StringBuilder()
 
-    private val process = processBuilder.redirectErrorStream(true).start()
     private val inputStream = process.inputStream
     private val writer = process.outputWriter()
 
