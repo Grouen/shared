@@ -37,5 +37,5 @@ inline fun <R> withLock(key: Any, block: () -> R): R {
 
 class LockAndCounter {
     val lock = ReentrantLock()
-    var counter = AtomicInteger()
+    val counter = AtomicInteger()
 }

@@ -51,8 +51,8 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-                api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
+                api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
+                api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
             }
         }
         val jvmMain by getting {
@@ -60,10 +60,10 @@ kotlin {
                 api(fileTree("libs") {
                     include("*.jar")
                 })
-                api("com.squareup.okio:okio:3.7.0")
+                api("com.squareup.okio:okio:3.8.0")
                 api("com.github.ajalt.mordant:mordant:2.3.0")
                 api("net.openhft:zero-allocation-hashing:0.16")
-                api("org.slf4j:slf4j-api:2.0.11")
+                api("org.slf4j:slf4j-api:2.0.12")
             }
         }
         val jsMain by getting
