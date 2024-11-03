@@ -39,13 +39,13 @@ data class ProxyInfo(
 
                 val addressAndPort = userDataAndAddress[1].split(":")
 
-                address = addressAndPort[0]
-                port = addressAndPort[1].toInt()
+                address = addressAndPort.subList(0, addressAndPort.size - 1).joinToString(":")
+                port = addressAndPort[addressAndPort.lastIndex].toInt()
             } else {
                 val addressAndPort = text.split(":")
 
-                address = addressAndPort[0]
-                port = addressAndPort[1].toInt()
+                address = addressAndPort.subList(0, addressAndPort.size - 1).joinToString(":")
+                port = addressAndPort[addressAndPort.lastIndex].toInt()
             }
 
 
