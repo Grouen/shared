@@ -148,7 +148,7 @@ class ProxyPool(
         val proxy = route?.proxy ?: return null
 
         for (challenge in challenges) {
-            if (!"Basic".equals(challenge.scheme, ignoreCase = true)) {
+            if (challenge.scheme != "Basic") {
                 continue
             }
 
@@ -156,7 +156,7 @@ class ProxyPool(
 
             val auth = proxiesMapForAuth[proxyAddress.hostName] ?: return null
 
-            val credential = runCatching { Credentials.basic(auth.userName!!, auth.password!!, challenge.charset) }.getOrNull()?: return null
+            val credential = runCatching { Credentials.basic(auth.userName!!, auth.password!!, challenge.charset) }.getOrNull() ?: return null
             return request.newBuilder()
                 .header("Proxy-Authorization", credential)
                 .build()
