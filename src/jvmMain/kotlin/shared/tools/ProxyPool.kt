@@ -20,6 +20,39 @@ class ProxyPool(
         private val PING_REQUEST = Request.Builder().url("https://api.ipify.org".toHttpUrl()).build()
         private val NO_PROXY = listOf(Proxy.NO_PROXY)
         private val logger = LoggerFactory.getLogger("ProxyPool")
+        private val pools = mutableListOf<ProxyPool>()
+
+        init {
+            val originalAuthenticator: java.net.Authenticator? = java.net.Authenticator.getDefault()
+            java.net.Authenticator.setDefault(object : java.net.Authenticator() {
+                override fun getPasswordAuthentication(): PasswordAuthentication? {
+                    var proxyInfo: ProxyInfo? = null
+
+                    for (pool in pools) {
+                        proxyInfo = pool.proxiesMapForAuth[requestingHost]
+
+                        if (proxyInfo != null) {
+                            break
+                        }
+                    }
+
+                    if (proxyInfo == null) {
+                        return originalAuthenticator?.requestPasswordAuthenticationInstance(
+                            requestingHost,
+                            requestingSite,
+                            requestingPort,
+                            requestingProtocol,
+                            requestingPrompt,
+                            requestingScheme,
+                            requestingURL,
+                            requestorType
+                        )
+                    }
+
+                    return PasswordAuthentication(proxyInfo.userName, proxyInfo.password?.toCharArray() ?: return null)
+                }
+            })
+        }
     }
 
     var proxyList = proxyList
@@ -34,13 +67,8 @@ class ProxyPool(
     private val lock = ReentrantLock()
 
     init {
-        java.net.Authenticator.setDefault(object : java.net.Authenticator() {
-            override fun getPasswordAuthentication(): PasswordAuthentication? {
-                val proxyInfo = proxiesMapForAuth[requestingHost] ?: return null
-                return PasswordAuthentication(proxyInfo.userName, proxyInfo.password?.toCharArray() ?: return null)
-            }
-        })
         update()
+        pools.add(this)
     }
 
     private lateinit var proxies: List<Proxy>
