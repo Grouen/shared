@@ -6,8 +6,8 @@ repositories {
 
 plugins {
     //id("com.github.ben-manes.versions") version "0.47.0"
-    kotlin("multiplatform") version Versions.kotlin apply true
-    kotlin("plugin.serialization") version Versions.kotlin apply true
+    kotlin("multiplatform")
+    kotlin("plugin.serialization")
 }
 
 /*tasks.withType<DependencyUpdatesTask> {
@@ -27,46 +27,28 @@ group = "shared"
 version = "1.0-SNAPSHOT"
 
 kotlin {
-    jvm {
-        jvmToolchain(Versions.jvmTarget.toInt())
-    }
+    jvmToolchain(Versions.jvmTarget.toInt())
+
+    jvm()
     js(IR) {
         browser {
 
         }
     }
-    val hostOs = System.getProperty("os.name")
-    val isArm64 = System.getProperty("os.arch") == "aarch64"
-    val isMingwX64 = hostOs.startsWith("Windows")
-    val nativeTarget = when {
-        hostOs == "Mac OS X" && isArm64 -> macosArm64("native")
-        hostOs == "Mac OS X" && !isArm64 -> macosX64("native")
-        hostOs == "Linux" && isArm64 -> linuxArm64("native")
-        hostOs == "Linux" && !isArm64 -> linuxX64("native")
-        isMingwX64 -> mingwX64("native")
-        else -> throw GradleException("Host OS is not supported in Kotlin/Native.")
-    }
-
 
     sourceSets {
-        val commonMain by getting {
-            dependencies {
-                api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
-                api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
-            }
+        commonMain.dependencies {
+            api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+            api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
         }
-        val jvmMain by getting {
-            dependencies {
-                api(fileTree("libs") {
-                    include("*.jar")
-                })
-                api("com.squareup.okio:okio:3.8.0")
-                api("com.github.ajalt.mordant:mordant:2.3.0")
-                api("net.openhft:zero-allocation-hashing:0.16")
-                api("org.slf4j:slf4j-api:2.0.12")
-            }
+        jvmMain.dependencies {
+            api(fileTree("libs") {
+                include("*.jar")
+            })
+            api("com.squareup.okio:okio:3.12.0")
+            api("com.github.ajalt.mordant:mordant:3.0.2")
+            api("net.openhft:zero-allocation-hashing:0.16")
+            api("org.slf4j:slf4j-api:2.0.17")
         }
-        val jsMain by getting
-        val nativeMain by getting
     }
 }
