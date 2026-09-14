@@ -1,6 +1,5 @@
 package shared.tools
 
-import okhttp3.internal.EMPTY_BYTE_ARRAY
 import okhttp3.internal.closeQuietly
 import java.io.IOException
 import java.nio.charset.Charset
@@ -107,6 +106,6 @@ class ProcessCommunication(processBuilder: ProcessBuilder, includeErrorStream: B
         inputStream.closeQuietly()
         writer.closeQuietly()
         recordBuilder.clear()
-        array = EMPTY_BYTE_ARRAY
+        array = ByteArray(0)
     }
 }
