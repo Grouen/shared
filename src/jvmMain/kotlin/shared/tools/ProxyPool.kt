@@ -21,6 +21,7 @@ class ProxyPool(
         private val NO_PROXY = listOf(Proxy.NO_PROXY)
         private val logger = LoggerFactory.getLogger("ProxyPool")
         private val pools = mutableListOf<ProxyPool>()
+        private var ownIp: String? = null
 
         init {
             val originalAuthenticator: java.net.Authenticator? = java.net.Authenticator.getDefault()
@@ -99,7 +100,7 @@ class ProxyPool(
 
         for (proxy in proxies) {
             if (bannedProxyForKey.contains(proxy).not()) {
-                return proxy
+                return if (isOwnProxy(proxy)) Proxy.NO_PROXY else proxy
             }
         }
 
@@ -107,24 +108,29 @@ class ProxyPool(
     }
 
     fun getProxy(): Proxy? = lock.withLock {
-        return proxies.getOrNull(when (mode) {
+        val proxy = proxies.getOrNull(when (mode) {
             Mode.AUTO -> index++
             Mode.MANUAL -> index
-        })
+        }) ?: return null
+        return if (isOwnProxy(proxy)) Proxy.NO_PROXY else proxy
     }
 
     fun getProxyInfo(): ProxyInfo? = lock.withLock {
-        return proxyList.getOrNull(when (mode) {
+        val proxyInfo = proxyList.getOrNull(when (mode) {
             Mode.AUTO -> index++
             Mode.MANUAL -> index
-        })
+        }) ?: return null
+        return if (proxyInfo.address == ownIp) null else proxyInfo
     }
 
     fun next(): Proxy? = lock.withLock {
-        return proxies.getOrNull(++index)
+        val proxy = proxies.getOrNull(++index) ?: return null
+        return if (isOwnProxy(proxy)) Proxy.NO_PROXY else proxy
     }
 
     fun validate(httpClient: OkHttpClient): List<ProxyInfo> {
+        ownIp = lookupOwnIp(httpClient)
+
         val invalidProxies: MutableList<ProxyInfo> = mutableListOf()
         val executors = Executors.newVirtualThreadPerTaskExecutor()
         val lock = ReentrantLock()
@@ -166,10 +172,15 @@ class ProxyPool(
 
     override fun select(uri: URI?): List<Proxy> {
         val nextProxy = getProxy() ?: return NO_PROXY
+        if (nextProxy.type() == Proxy.Type.DIRECT) return NO_PROXY
 
-        return proxies.toMutableList().apply {
-            remove(nextProxy)
-            add(0, nextProxy)
+        return buildList {
+            add(nextProxy)
+            for (proxy in proxies) {
+                if (proxy != nextProxy && isOwnProxy(proxy).not()) {
+                    add(proxy)
+                }
+            }
         }
     }
 
@@ -205,6 +216,28 @@ class ProxyPool(
         proxies = proxyList.map { it.toProxy() }
         proxiesMapForAuth = proxyList.associateBy { it.address }.toMutableMap()
         index = 0
+    }
+
+    private fun lookupOwnIp(httpClient: OkHttpClient): String? = runCatching {
+        httpClient
+            .newBuilder()
+            .proxy(Proxy.NO_PROXY)
+            .build()
+            .newCall(PING_REQUEST)
+            .execute()
+            .use { response ->
+                response.takeIf { it.isSuccessful }?.body?.string()?.trim()?.takeIf { it.isNotEmpty() }
+            }
+    }.onFailure { error ->
+        logger.info("Failed to detect own IP: {}", error.localizedMessage)
+    }.getOrNull()
+
+    private fun isOwnProxy(proxy: Proxy): Boolean {
+        if (proxy.type() == Proxy.Type.DIRECT) return true
+        val detectedIp = ownIp ?: return false
+        val address = proxy.address() as? InetSocketAddress ?: return false
+        val host = address.address?.hostAddress ?: address.hostString ?: return false
+        return host == detectedIp
     }
 
     enum class Mode {
